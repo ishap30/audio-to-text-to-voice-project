@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Whisper AI — Audio Transcription & TTS</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:'Inter', sans-serif;
+}
+
+:root{
+--bg:#060910;
+--card:rgba(255,255,255,0.035);
+--card-border:rgba(255,255,255,0.07);
+--accent:#00ffd5;
+--accent2:#7b6cf6;
+--text:#e4e6ef;
+--text-dim:#6b7280;
+--danger:#ff4d6a;
+}
+
+body{
+background:var(--bg);
+color:var(--text);
+min-height:100vh;
+display:flex;
+align-items:center;
+justify-content:center;
+padding:20px;
+overflow-x:hidden;
+}
+
+/* Animated blobs */
+.blob{
+position:fixed;
+border-radius:50%;
+filter:blur(100px);
+opacity:0.4;
+pointer-events:none;
+animation:float 12s infinite alternate ease-in-out;
+}
+.blob-1{width:500px;height:500px;background:#7b6cf6;top:-150px;left:-100px;}
+.blob-2{width:400px;height:400px;background:#00ffd5;bottom:-100px;right:-100px;animation-delay:-4s;}
+.blob-3{width:300px;height:300px;background:#0066ff;top:50%;left:50%;transform:translate(-50%,-50%);animation-delay:-8s;}
+
+@keyframes float{
+0%{transform:translate(0,0) scale(1)}
+50%{transform:translate(40px,-30px) scale(1.1)}
+100%{transform:translate(-20px,40px) scale(0.95)}
+}
+
+/* Main container */
+.container{
+width:100%;
+max-width:600px;
+position:relative;
+z-index:1;
+}
+
+/* Header */
+.header{
+text-align:center;
+margin-bottom:32px;
+}
+
+.logo{
+display:inline-flex;
+align-items:center;
+gap:10px;
+margin-bottom:12px;
+}
+
+.logo-icon{
+width:48px;
+height:48px;
+border-radius:14px;
+background:linear-gradient(135deg,var(--accent2),var(--accent));
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:24px;
+}
+
+.logo-text{
+font-size:32px;
+font-weight:800;
+background:linear-gradient(135deg,var(--accent2),var(--accent));
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+letter-spacing:-0.5px;
+}
+
+.header p{
+color:var(--text-dim);
+font-size:14px;
+font-weight:400;
+}
+
+/* Tabs */
+.tabs{
+display:flex;
+background:var(--card);
+border:1px solid var(--card-border);
+border-radius:14px;
+padding:4px;
+margin-bottom:24px;
+}
+
+.tab{
+flex:1;
+padding:12px;
+text-align:center;
+border-radius:11px;
+font-size:13px;
+font-weight:600;
+color:var(--text-dim);
+cursor:pointer;
+transition:all 0.3s;
+display:flex;
+align-items:center;
+justify-content:center;
+gap:6px;
+}
+
+.tab:hover{
+color:var(--text);
+}
+
+.tab.active{
+background:rgba(255,255,255,0.07);
+color:white;
+box-shadow:0 2px 12px rgba(0,0,0,0.3);
+}
+
+.tab .material-icons-round{font-size:18px;}
+
+/* Card */
+.card{
+background:var(--card);
+backdrop-filter:blur(24px);
+-webkit-backdrop-filter:blur(24px);
+border:1px solid var(--card-border);
+border-radius:20px;
+padding:32px;
+box-shadow:0 32px 64px rgba(0,0,0,0.4);
+}
+
+/* Panel */
+.panel{display:none;}
+.panel.active{display:block;}
+
+/* Upload area */
+.upload-area{
+border:2px dashed rgba(255,255,255,0.1);
+border-radius:16px;
+padding:44px 24px;
+text-align:center;
+cursor:pointer;
+transition:all 0.3s;
+position:relative;
+overflow:hidden;
+}
+
+.upload-area:hover{
+border-color:var(--accent);
+background:rgba(0,255,213,0.03);
+transform:translateY(-2px);
+}
+
+.upload-area.dragover{
+border-color:var(--accent);
+background:rgba(0,255,213,0.06);
+transform:scale(1.01);
+}
+
+.upload-area input[type="file"]{
+position:absolute;
+inset:0;
+opacity:0;
+cursor:pointer;
+}
+
+.upload-icon{
+width:64px;
+height:64px;
+border-radius:50%;
+background:linear-gradient(135deg,rgba(123,108,246,0.15),rgba(0,255,213,0.15));
+display:inline-flex;
+align-items:center;
+justify-content:center;
+margin-bottom:14px;
+}
+
+.upload-icon .material-icons-round{
+font-size:28px;
+background:linear-gradient(135deg,var(--accent2),var(--accent));
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+}
+
+.upload-area h3{
+font-size:15px;
+font-weight:600;
+margin-bottom:6px;
+}
+
+.upload-area p{
+font-size:12px;
+color:var(--text-dim);
+}
+
+/* File badge */
+.file-badge{
+display:none;
+align-items:center;
+gap:8px;
+margin-top:16px;
+padding:10px 14px;
+background:rgba(0,255,213,0.06);
+border:1px solid rgba(0,255,213,0.15);
+border-radius:10px;
+font-size:13px;
+color:var(--accent);
+}
+
+.file-badge .material-icons-round{font-size:18px;}
+
+.file-badge.show{display:inline-flex;}
+
+/* Mic section */
+.mic-section{
+text-align:center;
+padding:20px 0;
+}
+
+.mic-btn{
+width:100px;
+height:100px;
+border-radius:50%;
+border:3px solid rgba(255,255,255,0.08);
+background:rgba(255,255,255,0.04);
+cursor:pointer;
+display:inline-flex;
+align-items:center;
+justify-content:center;
+transition:all 0.3s;
+position:relative;
+}
+
+.mic-btn .material-icons-round{
+font-size:40px;
+color:var(--text-dim);
+transition:all 0.3s;
+}
+
+.mic-btn:hover{
+border-color:var(--accent);
+background:rgba(0,255,213,0.05);
+}
+
+.mic-btn:hover .material-icons-round{
+color:var(--accent);
+}
+
+.mic-btn.recording{
+border-color:var(--danger);
+background:rgba(255,77,106,0.08);
+animation:pulse-ring 1.5s infinite;
+}
+
+.mic-btn.recording .material-icons-round{
+color:var(--danger);
+}
+
+@keyframes pulse-ring{
+0%{box-shadow:0 0 0 0 rgba(255,77,106,0.3)}
+70%{box-shadow:0 0 0 20px rgba(255,77,106,0)}
+100%{box-shadow:0 0 0 0 rgba(255,77,106,0)}
+}
+
+.mic-label{
+margin-top:16px;
+font-size:13px;
+color:var(--text-dim);
+font-weight:500;
+}
+
+/* Waveform */
+.wave-bar{
+display:none;
+justify-content:center;
+align-items:center;
+gap:3px;
+margin-top:16px;
+height:30px;
+}
+
+.wave-bar.show{display:flex;}
+
+.wave-bar span{
+width:4px;
+background:var(--danger);
+border-radius:4px;
+animation:waveAnim 0.6s infinite ease-in-out alternate;
+}
+
+.wave-bar span:nth-child(1){height:8px;animation-delay:0s}
+.wave-bar span:nth-child(2){height:16px;animation-delay:0.1s}
+.wave-bar span:nth-child(3){height:24px;animation-delay:0.2s}
+.wave-bar span:nth-child(4){height:16px;animation-delay:0.3s}
+.wave-bar span:nth-child(5){height:8px;animation-delay:0.4s}
+
+@keyframes waveAnim{
+from{transform:scaleY(0.4)}
+to{transform:scaleY(1)}
+}
+
+/* TTS section */
+.tts-input{
+width:100%;
+min-height:120px;
+background:rgba(255,255,255,0.04);
+border:1px solid rgba(255,255,255,0.08);
+border-radius:12px;
+padding:16px;
+color:var(--text);
+font-size:14px;
+font-family:'Inter',sans-serif;
+resize:vertical;
+outline:none;
+transition:border 0.3s;
+}
+
+.tts-input:focus{
+border-color:var(--accent2);
+}
+
+.tts-input::placeholder{
+color:var(--text-dim);
+}
+
+/* Primary button */
+.btn{
+width:100%;
+margin-top:20px;
+padding:14px;
+border:none;
+border-radius:12px;
+background:linear-gradient(135deg,var(--accent2),var(--accent));
+color:#000;
+font-weight:700;
+font-size:14px;
+cursor:pointer;
+transition:all 0.25s;
+display:flex;
+align-items:center;
+justify-content:center;
+gap:8px;
+}
+
+.btn:hover{
+transform:translateY(-2px);
+box-shadow:0 8px 24px rgba(0,255,213,0.25);
+}
+
+.btn:disabled{
+opacity:0.35;
+cursor:not-allowed;
+transform:none;
+box-shadow:none;
+}
+
+.btn .material-icons-round{font-size:18px;}
+
+/* Loader */
+.loader{
+display:none;
+margin-top:20px;
+text-align:center;
+}
+
+.loader.show{display:block;}
+
+.spinner{
+width:32px;
+height:32px;
+border:3px solid rgba(255,255,255,0.06);
+border-top-color:var(--accent);
+border-radius:50%;
+animation:spin 0.8s linear infinite;
+margin:0 auto 10px;
+}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.loader p{
+font-size:13px;
+color:var(--text-dim);
+}
+
+/* Result box */
+.result-box{
+display:none;
+margin-top:24px;
+}
+
+.result-box.show{display:block;}
+
+.result-header{
+display:flex;
+align-items:center;
+justify-content:space-between;
+margin-bottom:10px;
+}
+
+.result-header span{
+font-size:12px;
+font-weight:600;
+text-transform:uppercase;
+letter-spacing:1px;
+color:var(--accent);
+}
+
+.result-actions{
+display:flex;
+gap:8px;
+}
+
+.icon-btn{
+background:rgba(255,255,255,0.05);
+border:1px solid rgba(255,255,255,0.08);
+border-radius:8px;
+padding:6px 10px;
+cursor:pointer;
+color:var(--text-dim);
+font-size:12px;
+display:flex;
+align-items:center;
+gap:4px;
+transition:all 0.2s;
+}
+
+.icon-btn:hover{
+background:rgba(255,255,255,0.1);
+color:var(--text);
+}
+
+.icon-btn .material-icons-round{font-size:15px;}
+
+.result-content{
+background:rgba(0,0,0,0.3);
+border:1px solid rgba(255,255,255,0.06);
+border-radius:12px;
+padding:20px;
+font-size:14px;
+line-height:1.8;
+color:var(--text);
+max-height:250px;
+overflow-y:auto;
+}
+
+.result-content::-webkit-scrollbar{width:4px;}
+.result-content::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:4px;}
+
+/* Audio player */
+.audio-player{
+margin-top:16px;
+display:none;
+}
+
+.audio-player.show{display:block;}
+
+.audio-player audio{
+width:100%;
+height:40px;
+border-radius:8px;
+outline:none;
+}
+
+/* Error */
+.error-msg{
+display:none;
+margin-top:16px;
+padding:12px 16px;
+background:rgba(255,77,106,0.08);
+border:1px solid rgba(255,77,106,0.2);
+border-radius:10px;
+color:var(--danger);
+font-size:13px;
+}
+
+.error-msg.show{display:flex;align-items:center;gap:8px;}
+.error-msg .material-icons-round{font-size:18px;}
+
+/* Footer */
+.footer{
+text-align:center;
+margin-top:24px;
+font-size:11px;
+color:rgba(255,255,255,0.15);
+}
+
+/* Responsive */
+@media(max-width:640px){
+.container{max-width:100%;}
+.card{padding:24px;}
+.logo-text{font-size:26px;}
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+<div class="blob blob-3"></div>
+
+<div class="container">
+
+<!-- Header -->
+<div class="header">
+  <div class="logo">
+    <div class="logo-icon">&#127908;</div>
+    <div class="logo-text">Whisper AI</div>
+  </div>
+  <p>Transcribe audio, record live, or convert text to speech</p>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('upload')">
+    <span class="material-icons-round">upload_file</span>Upload
+  </div>
+  <div class="tab" onclick="switchTab('mic')">
+    <span class="material-icons-round">mic</span>Live Mic
+  </div>
+  <div class="tab" onclick="switchTab('tts')">
+    <span class="material-icons-round">record_voice_over</span>TTS
+  </div>
+</div>
+
+<!-- Card -->
+<div class="card">
+
+  <!-- Upload Panel -->
+  <div class="panel active" id="panel-upload">
+    <div class="upload-area" id="dropZone">
+      <div class="upload-icon">
+        <span class="material-icons-round">cloud_upload</span>
+      </div>
+      <h3>Drop your audio file here</h3>
+      <p>Supports MP3, WAV, M4A, FLAC, OGG</p>
+      <input type="file" id="audioFile" accept="audio/*">
+    </div>
+
+    <div class="file-badge" id="fileBadge">
+      <span class="material-icons-round">audio_file</span>
+      <span id="fileName"></span>
+    </div>
+
+    <button class="btn" id="transcribeBtn" onclick="uploadAudio()" disabled>
+      <span class="material-icons-round">auto_awesome</span>
+      Transcribe Audio
+    </button>
+  </div>
+
+  <!-- Live Mic Panel -->
+  <div class="panel" id="panel-mic">
+    <div class="mic-section">
+      <div class="mic-btn" id="micBtn" onclick="toggleMic()">
+        <span class="material-icons-round">mic</span>
+      </div>
+      <div class="mic-label" id="micLabel">Tap to start recording</div>
+      <div class="wave-bar" id="waveBar">
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TTS Panel -->
+  <div class="panel" id="panel-tts">
+    <textarea class="tts-input" id="ttsInput" placeholder="Type or paste text here to convert to speech..."></textarea>
+    <button class="btn" id="ttsBtn" onclick="textToSpeech()">
+      <span class="material-icons-round">volume_up</span>
+      Generate Speech
+    </button>
+    <div class="audio-player" id="audioPlayer">
+      <audio controls id="ttsAudio"></audio>
+    </div>
+  </div>
+
+  <!-- Loader -->
+  <div class="loader" id="loader">
+    <div class="spinner"></div>
+    <p>Processing with Whisper AI...</p>
+  </div>
+
+  <!-- Error -->
+  <div class="error-msg" id="errorMsg">
+    <span class="material-icons-round">error_outline</span>
+    <span id="errorText"></span>
+  </div>
+
+  <!-- Result -->
+  <div class="result-box" id="resultBox">
+    <div class="result-header">
+      <span>Transcription</span>
+      <div class="result-actions">
+        <div class="icon-btn" onclick="copyText()">
+          <span class="material-icons-round">content_copy</span>
+          <span id="copyLabel">Copy</span>
+        </div>
+        <div class="icon-btn" onclick="speakResult()">
+          <span class="material-icons-round">volume_up</span>
+          Listen
+        </div>
+      </div>
+    </div>
+    <div class="result-content" id="resultContent"></div>
+  </div>
+
+</div>
+
+<div class="footer">Powered by OpenAI Whisper &bull; Flask</div>
+
+</div>
+
+<script src="/static/script.js"></script>
+
+</body>
+</html>
